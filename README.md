@@ -5,7 +5,7 @@ Nuget package: TODO
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![Build status](https://ci.appveyor.com/api/projects/status/h8d84kts2phy4wvj?svg=true)](https://ci.appveyor.com/project/CryptLink/hashedobjectstorage)
-[![NuGet](TODO:https://img.shields.io/nuget/v/CryptLink.HashedObjectStore.svg)](https://www.nuget.org/packages/CryptLink.HashedObjectStore/)
+[![NuGet](TODO:https://img.shields.io/nuget/v/HashedObjectStorage.svg)](https://www.nuget.org/packages/CryptLink.HashedObjectStore/)
 
 ## Implementations
 Currently the only official implementation is `MemoryStore` that stores items in a thread safe concurrent dictionary, it is very fast, but not durable. 
