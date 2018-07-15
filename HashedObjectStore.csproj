@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>CryptLink.HashedObjectStore</AssemblyName>
+    <RootNamespace>CryptLink.HashedObjectStore</RootNamespace>
+    <Authors>Jeremy Peterson</Authors>
+    <Company>CryptLink</Company>
+    <Description>A interface for implementing caching and storage of objects by their hash, a specialized key/value store for any object that implements `CryptLink.SigningFramework.IHashable`.</Description>
+    <Copyright>LGPL v3</Copyright>
+    <PackageLicenseUrl>https://github.com/CryptLink/HashedObjectStore/blob/master/LICENSE.md</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/CryptLink/HashedObjectStore</PackageProjectUrl>
+    <PackageIconUrl>https://avatars0.githubusercontent.com/u/37396837?s=200&amp;v=4</PackageIconUrl>
+    <RepositoryUrl>https://github.com/CryptLink/HashedObjectStore</RepositoryUrl>
+    <PackageTags>hash, hashing, crypto, cryptography, data, database, storage, object storage</PackageTags>
+    <Version>1.0.1</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="CryptLink.HashableItemStoreTests\**" />
+    <Compile Remove="Tests\**" />
+    <EmbeddedResource Remove="CryptLink.HashableItemStoreTests\**" />
+    <EmbeddedResource Remove="Tests\**" />
+    <None Remove="CryptLink.HashableItemStoreTests\**" />
+    <None Remove="Tests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CryptLink.SigningFramework" Version="1.1.0" />
+  </ItemGroup>
+</Project>
