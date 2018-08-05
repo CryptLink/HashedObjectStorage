@@ -39,14 +39,24 @@ namespace CryptLink.HashedObjectStore {
         long ItemCount { get; }
 
         /// <summary>
+        /// Gets the total size in bytes, accuracy depends on the Hash.SourceByteLength
+        /// </summary>
+        long StoreSizeBytes { get; }
+
+        /// <summary>
         /// Runs any maintenance needed for the store, including cleaning up old items
         /// </summary>
-        void RunMaintence();
+        void RunMaintenance();
 
         /// <summary>
         /// Permanently drops (deletes) all data immediately and cleans up any residual files or memory
         /// </summary>
         void DropData();
+
+        /// <summary>
+        /// Indicates if the implementor is durable/persistent 
+        /// </summary>
+        bool IsPersistant { get; }
 
     }
 }

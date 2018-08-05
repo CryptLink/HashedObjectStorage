@@ -23,6 +23,7 @@
     <None Remove="Tests\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CryptLink.SigningFramework" Version="1.1.0" />
+    <PackageReference Include="CryptLink.SigningFramework" Version="1.2.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
 </Project>

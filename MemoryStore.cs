@@ -15,6 +15,7 @@ namespace CryptLink.HashedObjectStore
 
         HashProvider _provider;
         TimeSpan _keepItemsFor;
+        TimeSpan _timeout;
         DateTime? _minDate;
         DateTime? _maxDate;
         long _maxTotalItems;
@@ -22,13 +23,15 @@ namespace CryptLink.HashedObjectStore
         long _maxTotalSizeBytes;
 
         public long ItemCount => _data.Count;
+        public long StoreSizeBytes => _dataSize;
+        public bool IsPersistant => false;
 
         /// <summary>
         /// Permanently drops (deletes) all data, memory will be freed on dispose or by Garbage Collector
         /// </summary>
         public void DropData() {
-            _data = null;
-            _dataDates = null;
+            _data = new ConcurrentDictionary<Hash, StorageItemMeta>();
+            _dataDates = new ConcurrentDictionary<DateTime, Hash>();
             _dataSize = 0;
             _minDate = null;
             _maxDate = null;
@@ -39,14 +42,17 @@ namespace CryptLink.HashedObjectStore
         /// </summary>
         /// <param name="Provider">The hash provider to use</param>
         /// <param name="KeepItemsFor">Length of time to keep any given item for</param>
-        /// <param name="MaxTotalItems">The maximum length this store can be, if overrun oldest items will be removed by RunMaintence()</param>
+        /// <param name="OperationTimeout">Amount of time to wait for read/write operations</param>
+        /// <param name="MaxTotalItems">The maximum length this store can be, if overrun oldest items will be removed by RunMaintenance()</param>
         /// <param name="MaxItemSizeBytes">The maximum length (in bytes) any item can be as reported by ComputedHash.SourceByteLength</param>
-        /// <param name="MaxTotalSizeBytes">The maximum size in bytes this entire collection can be, if overrun oldest items will be removed by RunMaintence()</param>
-        public MemoryStore(HashProvider Provider, TimeSpan KeepItemsFor, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes) {
+        /// <param name="MaxTotalSizeBytes">The maximum size in bytes this entire collection can be, if overrun oldest items will be removed by RunMaintenance()</param>
+        public MemoryStore(HashProvider Provider, TimeSpan KeepItemsFor, TimeSpan OperationTimeout, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes, string ConnectionString) {
             _provider = Provider;
             _keepItemsFor = KeepItemsFor;
+            _timeout = OperationTimeout;
             _maxTotalItems = MaxTotalItems;
             _maxItemSizeBytes = MaxItemSizeBytes;
+            _maxTotalSizeBytes = MaxTotalSizeBytes;
 
             _data = new ConcurrentDictionary<Hash, StorageItemMeta>();
             _dataDates = new ConcurrentDictionary<DateTime, Hash>();
@@ -59,16 +65,22 @@ namespace CryptLink.HashedObjectStore
         /// </summary>
         /// <param name="Provider">The hash provider to use</param>
         /// <param name="KeepItemsFor">Length of time to keep any given item for</param>
-        /// <param name="MaxTotalItems">The maximum length this store can be, if overrun oldest items will be removed by RunMaintence()</param>
+        /// <param name="OperationTimeout">Amount of time to wait for read/write operations</param>
+        /// <param name="MaxTotalItems">The maximum length this store can be, if overrun oldest items will be removed by RunMaintenance()</param>
         /// <param name="MaxItemSizeBytes">The maximum length (in bytes) any item can be as reported by ComputedHash.SourceByteLength</param>
-        /// <param name="MaxTotalSizeBytes">The maximum size in bytes this entire collection can be, if overrun oldest items will be removed by RunMaintence()</param>
-        public static IHashItemStore CreateStore(HashProvider Provider, TimeSpan KeepItemsFor, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes) {
-            return new MemoryStore(Provider, KeepItemsFor, MaxTotalItems, MaxTotalItems, MaxItemSizeBytes);
+        /// <param name="MaxTotalSizeBytes">The maximum size in bytes this entire collection can be, if overrun oldest items will be removed by RunMaintenance()</param>
+        /// <param name="ConnectionString">Connection string, not used in this implementation</param>
+        public static IHashItemStore CreateStore(HashProvider Provider, TimeSpan KeepItemsFor, TimeSpan OperationTimeout, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes, string ConnectionString) {
+            return new MemoryStore(Provider, KeepItemsFor, OperationTimeout, MaxTotalItems, MaxTotalItems, MaxItemSizeBytes, ConnectionString);
         }
 
         public T GetItem<T>(Hash ItemHash) where T : IHashable {
             if (_provider != ItemHash.Provider) {
                 throw new NullReferenceException("The items hash provider does not match the storage");
+            }
+
+            if (disposedValue) {
+                return default(T);
             }
 
             if (_data.ContainsKey(ItemHash)) {
@@ -81,7 +93,7 @@ namespace CryptLink.HashedObjectStore
         /// <summary>
         /// Runs any maintenance needed for the store, including cleaning up old items
         /// </summary>
-        public void RunMaintence() {
+        public void RunMaintenance() {
 
             //Remove items that are too old
             var maxAge = DateTime.Now.Add(-_keepItemsFor);
@@ -128,7 +140,10 @@ namespace CryptLink.HashedObjectStore
             }
 
             _dataDates.TryAdd(DateTime.Now, Item.ComputedHash);
-            _dataSize -= Item.ComputedHash.SourceByteLength;
+
+            if (Item.ComputedHash.SourceByteLength.HasValue) {
+                _dataSize -= Item.ComputedHash.SourceByteLength.Value;
+            }
             
             var meta = new StorageItemMeta() {
                 Item = Item,
@@ -157,7 +172,10 @@ namespace CryptLink.HashedObjectStore
 
             var result = _data.TryRemove(ItemHash, out removedMeta);
             _dataDates.TryRemove(removedMeta.StoreTime, out removedItemHash);
-            _dataSize -= ItemHash.SourceByteLength;
+
+            if (ItemHash.SourceByteLength.HasValue) {
+                _dataSize -= ItemHash.SourceByteLength.Value;
+            }
 
             if (removedMeta.StoreTime == _maxDate) {
                 _maxDate = _dataDates.Keys.Max();
@@ -186,7 +204,11 @@ namespace CryptLink.HashedObjectStore
         protected virtual void Dispose(bool disposing) {
             if (!disposedValue) {
                 if (disposing) {
-                    DropData();
+                    _data = null;
+                    _dataDates = null;
+                    _dataSize = 0;
+                    _minDate = null;
+                    _maxDate = null;
                 }
 
                 disposedValue = true;

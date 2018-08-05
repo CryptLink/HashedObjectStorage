@@ -1,23 +1,42 @@
 ﻿# CryptLink.HashedObjectStorage
-A interface for implementing caching and storage of objects by their hash, a specialized key/value store for any object that implements `CryptLink.SigningFramework.IHashable`.
+A interface for implementing caching and storage of objects by their hash, a specialized key/value store for any object that implements `CryptLink.SigningFramework.IHashable`. Useful for quick and simple storage of hashed content.
 
-Nuget package: TODO
+Nuget package: https://www.nuget.org/packages/CryptLink.HashedObjectStore/
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![Build status](https://ci.appveyor.com/api/projects/status/h8d84kts2phy4wvj?svg=true)](https://ci.appveyor.com/project/CryptLink/hashedobjectstorage)
-[![NuGet](TODO:https://img.shields.io/nuget/v/CryptLink.HashedObjectStore.svg)](https://www.nuget.org/packages/CryptLink.HashedObjectStore/)
+[![NuGet](https://img.shields.io/nuget/v/CryptLink.HashedObjectStore.svg)](https://www.nuget.org/packages/CryptLink.HashedObjectStore/)
 
-## Implementations
-Currently the only official implementation is `MemoryStore` that stores items in a thread safe concurrent dictionary, it is very fast, but not durable. 
+## Default Implementations
+
+### `MemoryStore`
+A thread safe memory only concurrent dictionary, it is very fast, but not durable. 
+
+### `FileStore`
+Low memory usage file based storage, each item is a file in a hashed based folder, slow, but 
+
+### Creating your own implementation
+The default implementations are functional and basic with no dependencies, but there are many databases and storage options that you may want to implement, and this library intends to make that possible.
+
+Implement: `IHashItemStore`
+Have a creation factory function with the signature: `Create(HashProvider Provider, TimeSpan KeepItemsFor, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes, string ConnectionString)`
+
+When using custom/3rd party/specialized implementations, you can easily discover them with `CryptLink.HashedObjectStore.Factory.GetImplementors()`
+
+### Generic Creation
+In order to load and use implementations not in this library, `CryptLink.HashedObjectStore.Factory.Create(...)` can discover and create instances of any implementor of `IHashItemStore` using reflection.
 
 ### Benchmark
 MemoryStore performance benchmark test on a i7-7700HQ, 16GB laptop:
 
 ```
 Message: Using single thread, Targeting 00:00:02.5000000 rounds
-CryptLink.HashedObjectStore.MemoryStore for SHA256: preformed 695,186 operations in 00:00:02.5058967, (277,420 per sec)
-CryptLink.HashedObjectStore.MemoryStore for SHA384: preformed 776,024 operations in 00:00:02.5000266, (310,406 per sec)
-CryptLink.HashedObjectStore.MemoryStore for SHA512: preformed 807,220 operations in 00:00:02.5087127, (321,767 per sec)
+MemoryStore for SHA256: preformed 613,350 operations in 00:00:02.5000249, (245,338 per sec)
+MemoryStore for SHA384: preformed 546,316 operations in 00:00:02.5000239, (218,524 per sec)
+MemoryStore for SHA512: preformed 567,864 operations in 00:00:02.5000293, (227,143 per sec)
+FileStore for SHA256: preformed 512 operations in 00:00:02.5007423, (205 per sec)
+FileStore for SHA384: preformed 548 operations in 00:00:02.5040153, (219 per sec)
+FileStore for SHA512: preformed 498 operations in 00:00:02.5006257, (199 per sec)
 ```
 
 This test sudo-randomly creates GUIDs, converts them to HashableStrings and stores them (about 72 bytes of text).
