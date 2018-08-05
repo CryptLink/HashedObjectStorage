@@ -22,7 +22,23 @@ namespace CryptLink.HashedObjectStoreTests {
         }
 
         [Test, Category("HashableStore")]
-        public void AddRemove() {
+        public void SimpleFactoryExample() {
+            var memStore = Factory.Create(typeof(MemoryStore), HashProvider.SHA256);
+            var itemToStore = new HashableString("Test Value", HashProvider.SHA256);
+            memStore.StoreItem(itemToStore);
+            Assert.NotNull(memStore.GetItem<HashableString>(itemToStore.ComputedHash));
+        }
+
+        [Test, Category("HashableStore")]
+        public void SimpleMemStoreExample() {
+            var memStore = new MemoryStore(HashProvider.SHA256, new TimeSpan(1,0,0), new TimeSpan(0, 0, 30), int.MaxValue, int.MaxValue, int.MaxValue, null);
+            var itemToStore = new HashableString("Test Value", HashProvider.SHA256);
+            memStore.StoreItem(itemToStore);
+            Assert.NotNull(memStore.GetItem<HashableString>(itemToStore.ComputedHash));
+        }
+
+        [Test, Category("HashableStore")]
+        public void AddRemoveExaustive() {
 
             foreach (var hStoreType in Factory.GetImplementors()) {
                 foreach (HashProvider provider in Enum.GetValues(typeof(HashProvider))) {
@@ -85,7 +101,7 @@ namespace CryptLink.HashedObjectStoreTests {
         /// Check that the store can 
         /// </summary>
         [Test, Category("HashableStore")]
-        public void RunMaintenance() {
+        public void RunMaintenanceExaustive() {
             int testSize = 20;
 
             foreach (var hStoreType in (Factory.GetImplementors())) {

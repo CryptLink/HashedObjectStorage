@@ -12,7 +12,14 @@ namespace CryptLink.HashedObjectStoreTests {
     class PerformanceTests
     {
         private TimeSpan TestLength = new TimeSpan(0, 0, 0, 2, 500);
-        private Random random = new Random();
+        //private Random random = new Random();
+        //private byte[] psudoRandomData = new byte[1048576]; //1mb
+
+        //[SetUp]
+        //public void SetupFunction() {
+        //    var r = new Random();
+        //    r.NextBytes(psudoRandomData);
+        //}
 
         [Test, Category("Performance")]
         public void AddGetPerformance() {
@@ -29,24 +36,31 @@ namespace CryptLink.HashedObjectStoreTests {
                     var c = StoreTests.GetTestStore(hStore, provider, true);
 
                     DateTime startTime = DateTime.Now;
+                    int count = 0;
 
                     while ((startTime + TestLength) > DateTime.Now) {
-                        var item = GetNext();
-                        item.ComputeHash(provider);
+                        var item = GetNextGuid();
+                        item.ComputeHash(provider, null);
                         c.StoreItem(item);
-                        c.GetItem<HashableString>(item.ComputedHash);
+                        c.GetItem<IHashable>(item.ComputedHash);
+                        count++;
                     }
 
-                    results += GetResultString(provider, c.ItemCount * operationCount, hStore, (DateTime.Now - startTime));
+                    results += GetResultString(provider, count * operationCount, hStore, (DateTime.Now - startTime));
                 }
             }
 
             Assert.Pass(results);
         }
 
-        public HashableString GetNext() {
+        public IHashable GetNextGuid() {
             return new HashableString(Guid.NewGuid().ToString());
         }
+
+        //public IHashable GetNextLarge() {
+        //    Array.Copy(psudoRandomData, 1, psudoRandomData, 0, psudoRandomData.Length - 1);
+        //    return new HashableBytes(psudoRandomData, HashProvider.SHA256);
+        //}
 
         [Test, Category("Performance")]
         public void AddGetMultithreadPerformance() {
@@ -71,10 +85,10 @@ namespace CryptLink.HashedObjectStoreTests {
                             DateTime taskStartTime = DateTime.Now;
 
                             while ((taskStartTime + TestLength) > DateTime.Now) {
-                                var item = GetNext();
-                                item.ComputeHash(provider);
+                                var item = GetNextGuid();
+                                item.ComputeHash(provider, null);
                                 c.StoreItem(item);
-                                c.GetItem<HashableString>(item.ComputedHash);
+                                c.GetItem<IHashable>(item.ComputedHash);
                             }
                         });
 

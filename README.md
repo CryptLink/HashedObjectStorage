@@ -13,13 +13,38 @@ Nuget package: https://www.nuget.org/packages/CryptLink.HashedObjectStore/
 A thread safe memory only concurrent dictionary, it is very fast, but not durable. 
 
 ### `FileStore`
-Low memory usage file based storage, each item is a file in a hashed based folder, slow, but 
+Low memory usage file based storage, each item stored as a json file. Slow but simple.
 
-### Creating your own implementation
+## Simple Example
+``` C#
+var memStore = HashedObjectStore.Factory.Create(typeof(MemoryStore), HashProvider.SHA256);
+var itemToStore = new HashableString("Test Value", HashProvider.SHA256);
+memStore.StoreItem(itemToStore);
+```
+
+## Factory Example
+``` C#
+var memStore = Factory.Create(typeof(MemoryStore), HashProvider.SHA256);
+var itemToStore = new HashableString("Test Value", HashProvider.SHA256);
+memStore.StoreItem(itemToStore);
+```
+
+## Creating your own implementation
 The default implementations are functional and basic with no dependencies, but there are many databases and storage options that you may want to implement, and this library intends to make that possible.
 
 Implement: `IHashItemStore`
-Have a creation factory function with the signature: `Create(HashProvider Provider, TimeSpan KeepItemsFor, long MaxTotalItems, long MaxItemSizeBytes, long MaxTotalSizeBytes, string ConnectionString)`
+Have a creation factory function with the signature: 
+
+``` C#
+public IHashItemStore Create(
+    HashProvider Provider, 
+    TimeSpan KeepItemsFor, 
+    TimeSpan OperationTimeout,
+    long MaxTotalItems, 
+    long MaxItemSizeBytes, 
+    long MaxTotalSizeBytes, 
+    string ConnectionString) {}
+```
 
 When using custom/3rd party/specialized implementations, you can easily discover them with `CryptLink.HashedObjectStore.Factory.GetImplementors()`
 
