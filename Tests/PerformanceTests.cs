@@ -33,7 +33,7 @@ namespace CryptLink.HashedObjectStoreTests {
                 }
 
                 foreach (HashProvider provider in Enum.GetValues(typeof(HashProvider))) {
-                    var c = StoreTests.GetTestStore(hStore, provider, true);
+                    var c = StoreTests.GetTestStore(hStore, provider, true, int.MaxValue);
 
                     DateTime startTime = DateTime.Now;
                     int count = 0;
@@ -75,7 +75,7 @@ namespace CryptLink.HashedObjectStoreTests {
 
                 foreach (HashProvider provider in Enum.GetValues(typeof(HashProvider))) {
 
-                    var c = StoreTests.GetTestStore(hStore, provider, true);
+                    var c = StoreTests.GetTestStore(hStore, provider, true, int.MaxValue);
                     var tasks = new List<Task>();
                     DateTime testStart = DateTime.Now;
 

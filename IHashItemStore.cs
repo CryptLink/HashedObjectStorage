@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using CryptLink.SigningFramework;
 
 namespace CryptLink.HashedObjectStore {
@@ -7,11 +8,18 @@ namespace CryptLink.HashedObjectStore {
     public interface IHashItemStore : IDisposable {
 
         /// <summary>
-        /// Gets an item
+        /// Gets a typed item
         /// </summary>
         /// <param name="ItemHash">The hash of the item to get</param>
         /// <returns>The item if it exists, null if not</returns>
         T GetItem<T>(Hash ItemHash) where T : IHashable;
+
+        /// <summary>
+        /// Writes an item to a stream
+        /// </summary>
+        /// <param name="ItemHash">The hash of the item to get</param>
+        /// <returns>True if the item exists</returns>
+        Stream GetItemStream(Hash ItemHash);
 
         /// <summary>
         /// Tries to remove a single item, returns true if successful 

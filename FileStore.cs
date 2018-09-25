@@ -20,6 +20,8 @@ namespace CryptLink.HashedObjectStore
         public long StoreSizeBytes => totalSize;
         public bool IsPersistant => true;
 
+        private char fileDelimiter = ';';
+
         private long _dataSize;
         HashProvider _provider;
         TimeSpan _keepItemsFor;
@@ -30,7 +32,7 @@ namespace CryptLink.HashedObjectStore
         long _maxKnownFileCacheLength = 100000;
         string _rootFolder;
 
-        ConcurrentDictionary<Hash, DateTime> fileLocks = new ConcurrentDictionary<Hash, DateTime>();
+        //ConcurrentDictionary<Hash, DateTime> fileLocks = new ConcurrentDictionary<Hash, DateTime>();
 
         /// <summary>
         /// Creates a new memory store, items stored here are not written to disk
@@ -83,8 +85,55 @@ namespace CryptLink.HashedObjectStore
         }
 
         public void DropData() {
-            Directory.Delete(_rootFolder, true);
+            var startTime = DateTime.Now;
+
+            while (Directory.Exists(_rootFolder)) {
+                try {
+                    Directory.Delete(_rootFolder, true);
+                } catch (Exception) {
+                    if (TimedOut(startTime)) {
+                        break;
+                    } else {
+                        System.Threading.Thread.Sleep(retryMills);
+                    }
+                }
+            }
+
+            if (Directory.Exists(_rootFolder)) {
+                throw new AccessViolationException("Unable to drop data, deletetion failed after the specificed timeout");
+            }            
+
             Dispose();
+        }
+
+        public bool WriteItem(Hash ItemHash, StreamWriter ToStream) {
+
+            if (disposedValue == true) {
+                return false;
+            }
+
+            var path = GetHashFilePath(ItemHash);
+            var startTime = DateTime.Now;
+            bool success = false;
+
+            while (File.Exists(path)) {
+                try {
+                    using (StreamReader file = File.OpenText(path)) {
+                        ToStream.Write(file);
+                        //ToStream.Flush();
+                        success = true;
+                        break;
+                    }
+                } catch (Exception) {
+                    if (TimedOut(startTime)) {
+                        break;
+                    } else {
+                        System.Threading.Thread.Sleep(retryMills);
+                    }
+                }
+            }
+
+            return success;
         }
 
         public T GetItem<T>(Hash ItemHash) where T : IHashable {
@@ -93,7 +142,8 @@ namespace CryptLink.HashedObjectStore
                 return default(T);
             }
 
-            var path = GetHashPath(ItemHash);
+            var path = GetHashFilePath(ItemHash);
+
             var startTime = DateTime.Now;
 
             while (File.Exists(path)) {
@@ -115,8 +165,34 @@ namespace CryptLink.HashedObjectStore
             return default(T);
         }
 
+        public Stream GetItemStream(Hash ItemHash) {
+
+            if (disposedValue == true) {
+                return default(Stream);
+            }
+
+            var path = GetHashFilePath(ItemHash);
+            var startTime = DateTime.Now;
+
+            while (File.Exists(path)) {
+                try {
+                    return File.OpenRead(path);
+                } catch (Exception) {
+                    if (TimedOut(startTime)) {
+                        break;
+                    } else {
+                        System.Threading.Thread.Sleep(retryMills);
+                    }
+                }
+            }
+
+            return default(Stream);
+        }
+
         public void RunMaintenance() {
-            var allFiles = GetFiles(_rootFolder).OrderBy(a => a.ComputedDate).ToList();
+            var allFiles = GetFiles(_rootFolder).OrderBy(a => a.ComputedDate.Value.Ticks).ToList();
+
+            //recount size and length we may not have a complete state
             itemCount = allFiles.Count();
             totalSize = (from a in allFiles where a.SourceByteLength.HasValue select a.SourceByteLength.Value).Sum();
 
@@ -134,23 +210,17 @@ namespace CryptLink.HashedObjectStore
                     break;
                 }
             }
-
         }
-
-
+        
         private List<Hash> GetFiles(string Folder) {
             var hashList = new List<Hash>();
 
             foreach (var file in Directory.GetFiles(Folder)) {
-                var fi = new FileInfo(file);
-                var hashBytes = Utility.DecodeBytes(Path.GetFileNameWithoutExtension(file), false);
+                Hash fileHash = GetHashFromPath(file);
 
-                if (hashBytes == null || hashBytes.Length != _provider.GetProviderByteLength()) {
-                    continue;
+                if (fileHash != null) {
+                    hashList.Add(fileHash);
                 }
-
-                var h = Hash.FromComputedBytes(hashBytes, _provider, fi.Length, fi.LastWriteTime);
-                hashList.Add(h);
             }
 
             foreach (var folder in Directory.GetDirectories(Folder)) {
@@ -160,9 +230,43 @@ namespace CryptLink.HashedObjectStore
             return hashList;
         }
 
-        private string GetHashPath(Hash ForItem) {
-            string itemHash = Utility.EncodeBytes(ForItem.Bytes, true, false);
-            return Path.Combine(_rootFolder, itemHash.Substring(0, 2).ToUpper(), itemHash.Substring(2, 2).ToUpper(), itemHash);
+        /// <summary>
+        /// Gets a file path for a given hash
+        /// </summary>
+        private string GetHashFilePath(Hash ForItem) {
+            string itemHashb64 = Utility.EncodeBytes(ForItem.Bytes, true, false);
+
+            //first part of the filename is the hash, the 2nd the compute date (filesystem dates have less accuracy than we want)
+            string fileName = itemHashb64 + fileDelimiter + ForItem.ComputedDate.Value.Ticks;
+            return Path.Combine(_rootFolder, itemHashb64.Substring(0, 2).ToUpper(), itemHashb64.Substring(2, 2).ToUpper(), fileName);
+        }
+
+        /// <summary>
+        /// Get a hash from a file path
+        /// </summary>
+        private Hash GetHashFromPath(string FilePath) {
+            string[] fileSplit = Path.GetFileNameWithoutExtension(FilePath).Split(fileDelimiter);
+
+            DateTimeOffset? itemDate = null;
+            
+            if (fileSplit.Length == 2) {
+                long ticks;
+                if (long.TryParse(fileSplit[1], out ticks)) {
+                    itemDate = new DateTimeOffset(ticks, DateTimeOffset.Now.Offset);
+                }
+            }
+
+            var hashBytes = Utility.DecodeBytes(fileSplit[0], false);
+            if (hashBytes == null || hashBytes.Length != _provider.GetProviderByteLength()) {
+                return null;
+            }
+
+            if (File.Exists(FilePath)) {
+                var fi = new FileInfo(FilePath);
+                return Hash.FromComputedBytes(hashBytes, _provider, fi.Length, itemDate);
+            } else {
+                return Hash.FromComputedBytes(hashBytes, _provider, null, itemDate);
+            }
         }
 
         public bool StoreItem<T>(T Item) where T : IHashable {
@@ -171,7 +275,7 @@ namespace CryptLink.HashedObjectStore
                 return false;
             }
 
-            var path = GetHashPath(Item.ComputedHash);
+            var path = GetHashFilePath(Item.ComputedHash);
             var folder = Path.GetDirectoryName(path);
 
             if (!Directory.Exists(folder)) {
@@ -221,7 +325,7 @@ namespace CryptLink.HashedObjectStore
         }
 
         public bool TryRemoveItem(Hash ItemHash) {
-            var path = GetHashPath(ItemHash);
+            var path = GetHashFilePath(ItemHash);
             var startTime = DateTime.Now;
 
             while (File.Exists(path)) {
@@ -274,6 +378,7 @@ namespace CryptLink.HashedObjectStore
         public void Dispose() {
             Dispose(true);
         }
+
         #endregion
     }
 }

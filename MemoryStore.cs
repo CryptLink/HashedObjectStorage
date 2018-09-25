@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using CryptLink.SigningFramework;
+using Newtonsoft.Json;
 
 namespace CryptLink.HashedObjectStore
 {
@@ -74,6 +77,22 @@ namespace CryptLink.HashedObjectStore
             return new MemoryStore(Provider, KeepItemsFor, OperationTimeout, MaxTotalItems, MaxTotalItems, MaxItemSizeBytes, ConnectionString);
         }
 
+        public bool WriteItem(Hash ItemHash, StreamWriter ToStream) {
+
+            var i = GetItem(ItemHash);
+            var s = new JsonSerializer();
+
+            using (var jtw = new JsonTextWriter(ToStream) {
+                Formatting = Formatting.None
+            }) {
+                s.Serialize(jtw, i);
+                //jtw.Flush();
+                //ToStream.Flush();
+            }
+
+            return (i != null);
+        }
+
         public T GetItem<T>(Hash ItemHash) where T : IHashable {
             if (_provider != ItemHash.Provider) {
                 throw new NullReferenceException("The items hash provider does not match the storage");
@@ -87,6 +106,38 @@ namespace CryptLink.HashedObjectStore
                 return (T)_data[ItemHash].Item;
             } else {
                 return default(T);
+            }
+        }
+
+        public Stream GetItemStream(Hash ItemHash) {
+            if (_provider != ItemHash.Provider) {
+                throw new NullReferenceException("The items hash provider does not match the storage");
+            }
+
+            if (disposedValue) {
+                return default(Stream);
+            }
+
+            if (_data.ContainsKey(ItemHash)) {
+                return new MemoryStream(Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(_data[ItemHash].Item)));
+            } else {
+                return default(Stream);
+            }
+        }
+
+        public object GetItem(Hash ItemHash) {
+            if (_provider != ItemHash.Provider) {
+                throw new NullReferenceException("The items hash provider does not match the storage");
+            }
+
+            if (disposedValue) {
+                return null;
+            }
+
+            if (_data.ContainsKey(ItemHash)) {
+                return _data[ItemHash].Item;
+            } else {
+                return null;
             }
         }
 
@@ -105,11 +156,13 @@ namespace CryptLink.HashedObjectStore
 
             //Check if the store is too big
             if (_data.Count > _maxTotalItems) {
-                if (_maxTotalItems > int.MaxValue) {
-                    _maxTotalItems = int.MaxValue;
+                long removeItems = (_data.Count - _maxTotalItems);
+
+                if (removeItems > int.MaxValue) {
+                    removeItems = int.MaxValue;
                 }
 
-                var oldestItems = (from e in _dataDates orderby e.Key select e.Value).Take((int)_maxTotalItems);
+                var oldestItems = (from e in _dataDates orderby e.Key select e.Value).Take((int)removeItems);
                 TryRemoveItems(oldestItems);
             }
 
@@ -218,6 +271,7 @@ namespace CryptLink.HashedObjectStore
         public void Dispose() {
             Dispose(true);
         }
+
         #endregion
     }
 }

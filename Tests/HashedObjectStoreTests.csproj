@@ -15,4 +15,9 @@
   <ItemGroup>
     <ProjectReference Include="..\HashedObjectStore.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="cert1.pfx_testonly_donotuse">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

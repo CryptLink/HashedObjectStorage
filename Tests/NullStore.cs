@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using CryptLink.SigningFramework;
 
@@ -18,8 +19,11 @@ namespace CryptLink.HashedObjectStore {
         public void RunMaintenance() {}
         public void TryRemoveItems(IEnumerable<Hash> ItemHash) {}
         public T GetItem<T>(Hash ItemHash) where T : IHashable => default(T);
+        public Stream GetItemStream(Hash ItemHash) => default(Stream);
         public bool StoreItem<T>(T Item) where T : IHashable => false;
         public bool TryRemoveItem(Hash ItemHash) => false;
+
+        public bool WriteItem(Hash ItemHash, StreamWriter ToStream) => false; 
 
         public NullStore(HashProvider provider, TimeSpan KeepItemsFor, TimeSpan OperationTimeout, long MaxCount, long MaxItemSize, long MaxTotalSize, string ConnectionString) { }
     }
