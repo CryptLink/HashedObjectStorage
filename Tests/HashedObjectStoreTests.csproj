@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <AssemblyName>CryptLink.HashedObjectStoreTests</AssemblyName>
     <RootNamespace>CryptLink.HashedObjectStoreTests</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Appveyor.TestLogger" Version="2.0.0" />

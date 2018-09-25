@@ -12,7 +12,7 @@
     <PackageIconUrl>https://avatars0.githubusercontent.com/u/37396837?s=200&amp;v=4</PackageIconUrl>
     <RepositoryUrl>https://github.com/CryptLink/HashedObjectStore</RepositoryUrl>
     <PackageTags>hash, hashing, crypto, cryptography, data, database, storage, object storage</PackageTags>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="CryptLink.HashableItemStoreTests\**" />
